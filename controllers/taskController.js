@@ -59,25 +59,7 @@ const sendReminderEmail = async (userEmail, taskTitle) => {
   }
 };
 
-// Function to send daily reminders until the task is completed
-const sendDailyReminders = async (userEmail, taskTitle, taskDeadline) => {
-  const today = new Date();
-  const deadline = new Date(taskDeadline);
 
-  // Check if the task is not completed and the deadline is in the future
-  if (!task.completed && deadline > today) {
-    // Calculate the time difference in milliseconds
-    const timeDifference = deadline - today;
-
-    // Calculate the number of days until the deadline
-    const daysUntilDeadline = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-
-    // If there are less than 3 days until the deadline, send a daily reminder
-    if (daysUntilDeadline <= 3) {
-      await sendReminderEmail(userEmail, taskTitle);
-    }
-  }
-};
 
 
 
@@ -104,169 +86,6 @@ const getTasks = async (req, res) => {
 
 
 
-// const createTask = async (req, res) => {
-//   const { title, description, deadline, priority, tags, reminder } = req.body;
-
-//   try {
-//     const newTask = new Task({
-//       title,
-//       description,
-//       deadline,
-//       priority,
-//       tags,
-//       reminder,
-//       user: req.user._id,
-//     });
-
-//     const savedTask = await newTask.save();
-
-//     // Check if the task has a deadline and schedule reminders if necessary
-//     if (deadline && reminder) {
-//       const user = await User.findById(req.user._id);
-//       if (user) {
-//         await sendReminderEmail(user.email, title);
-//         // Schedule reminders until the task is completed
-//         const reminderInterval = setInterval(() => sendReminder(user.email, title, reminder), 24 * 60 * 60 * 1000); // Repeat every 24 hours
-
-//         // Optionally, store the reminderInterval ID in the task document for future reference
-//         savedTask.reminderIntervalId = reminderInterval._id;
-//         await savedTask.save();
-//       }
-//     }
-
-//     res.json(savedTask);
-//   } catch (error) {
-//     console.error('Error creating task:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-// const createTask = async (req, res) => {
-//   const { title, description, deadline, priority, tags, reminder } = req.body;
-
-//   try {
-//     const newTask = new Task({
-//       title,
-//       description,
-//       deadline,
-//       priority,
-//       tags,
-//       reminder,
-//       user: req.user._id,
-//     });
-
-//     const savedTask = await newTask.save();
-
-//     // Check if the task has a deadline and schedule a reminder if necessary
-//     if (deadline && reminder) {
-//       const user = await User.findById(req.user._id);
-//       if (user) {
-//         await sendReminderEmail(user.email, title);
-//       }
-//     }
-
-//     res.json(savedTask);
-//   } catch (error) {
-//     console.error('Error creating task:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-
-// const createTask = async (req, res) => {
-//   const { title, description, deadline, priority, tags, reminder } = req.body;
-
-//   try {
-//     const newTask = new Task({
-//       title,
-//       description,
-//       deadline,
-//       priority,
-//       tags,
-//       reminder,
-//       user: req.user._id,
-//     });
-
-//     const savedTask = await newTask.save();
-
-//     // Check if the task has a reminder and schedule it if necessary
-//     if (reminder) {
-//       const user = await User.findById(req.user._id);
-//       if (user) {
-//         const currentDate = new Date();
-//         const reminderDate = new Date(reminder);
-
-//         // Set the reminder time to 8 A.M.
-//         reminderDate.setHours(8, 0, 0, 0);
-
-//         // Calculate the time difference in milliseconds until 8 A.M.
-//         const timeDifference = reminderDate - currentDate;
-
-//         // Schedule the reminder to be sent after the calculated time difference
-//         setTimeout(async () => {
-//           await sendReminderEmail(user.email, title);
-//         }, timeDifference);
-//       }
-//     }
-
-//     res.json(savedTask);
-//   } catch (error) {
-//     console.error('Error creating task:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-// const createTask = async (req, res) => {
-//   const { title, description, deadline, priority, tags, reminder } = req.body;
-
-//   try {
-//     const newTask = new Task({
-//       title,
-//       description,
-//       deadline,
-//       priority,
-//       tags,
-//       reminder,
-//       user: req.user._id,
-//     });
-
-//     const savedTask = await newTask.save();
-
-//     // Check if the task has a reminder and schedule it if necessary
-//     if (reminder) {
-//       const user = await User.findById(req.user._id);
-//       if (user) {
-//         // Parse the selected reminder time from the input value
-//         const selectedReminderTime = new Date(reminder).getTime();
-
-//         // Calculate the time difference in milliseconds until the selected reminder time
-//         const timeDifference = selectedReminderTime - new Date().getTime();
-
-//         // Schedule the reminder to be sent after the calculated time difference
-//         setTimeout(async () => {
-//           await sendReminderEmail(user.email, title);
-//         }, timeDifference);
-//       }
-//     }
-
-//     res.json(savedTask);
-//   } catch (error) {
-//     console.error('Error creating task:', error);
-//     res.status(500).json({ error: error.message });
-//   }
-// };
-
-
-
-
-
 const createTask = async (req, res) => {
   const { title, description, deadline, priority, tags, reminder } = req.body;
 
@@ -287,38 +106,19 @@ const createTask = async (req, res) => {
     if (reminder) {
       const user = await User.findById(req.user._id);
       if (user) {
-        // Parse the selected reminder and deadline times from the input values
+        // Parse the selected reminder time from the input values
         const selectedReminderTime = new Date(reminder).getTime();
-        const deadlineTime = new Date(deadline).getTime();
+        const currentDateTime = new Date().getTime();
 
         // Calculate the initial time difference until the selected reminder time
-        const initialTimeDifference = selectedReminderTime - new Date().getTime();
+        const initialTimeDifference = selectedReminderTime - currentDateTime;
 
-        // Schedule the first reminder to be sent after the initial time difference
+        // Schedule the initial reminder to be sent after the initial time difference
         setTimeout(async () => {
           await sendReminderEmail(user.email, title);
+          // Now, schedule daily reminders at 11:50 AM and 4:00 PM until the deadline
+          scheduleDailyReminders(user, title, deadline);
         }, initialTimeDifference);
-
-        // Calculate the daily intervals at 9 AM and 4 PM in milliseconds
-        const oneDayInMilliseconds = 24 * 60 * 60 * 1000;
-        const nineAMInMilliseconds = 9 * 60 * 60 * 1000;
-        const fourPMInMilliseconds = 16 * 60 * 60 * 1000;
-
-        // Schedule subsequent reminders to be sent every day at 9 AM and 4 PM between reminder and deadline
-        const reminderInterval = setInterval(async () => {
-          const currentDate = new Date().getTime();
-          if (currentDate < deadlineTime) {
-            const hours = new Date().getHours();
-
-            // Send reminders at 9 AM and 4 PM
-            if (hours === 9 || hours === 16) {
-              await sendReminderEmail(user.email, title);
-            }
-          } else {
-            // If the current date exceeds the deadline, clear the interval
-            clearInterval(reminderInterval);
-          }
-        }, oneDayInMilliseconds);
       }
     }
 
@@ -326,6 +126,32 @@ const createTask = async (req, res) => {
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+// Helper function to schedule daily reminders between two specific times
+const scheduleDailyReminders = async (user, taskTitle, deadline) => {
+  const currentDate = new Date();
+  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0, 0, 0);
+  const reminderTime2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0, 0, 0);
+
+  // Calculate time differences for both reminder times
+  const timeDifference1 = reminderTime1.getTime() - currentDate.getTime();
+  const timeDifference2 = reminderTime2.getTime() - currentDate.getTime();
+
+  // Schedule daily reminders at 9:00 AM and 4:00 PM until the deadline
+  if (timeDifference1 > 0) {
+    setTimeout(async () => {
+      await sendReminderEmail(user.email, taskTitle);
+      scheduleDailyReminders(user, taskTitle, deadline);
+    }, timeDifference1);
+  }
+
+  if (timeDifference2 > 0) {
+    setTimeout(async () => {
+      await sendReminderEmail(user.email, taskTitle);
+      scheduleDailyReminders(user, taskTitle, deadline);
+    }, timeDifference2);
   }
 };
 
