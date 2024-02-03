@@ -1,4 +1,3 @@
-// models/Task.js
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
@@ -10,6 +9,15 @@ const taskSchema = new mongoose.Schema({
     type: String,
   },
   deadline: {
+    type: Date,
+  },
+  priority: {
+    type: String, // Change the type according to your priority values (e.g., 'high', 'medium', 'low')
+  },
+  tags: {
+    type: String,
+  },
+  reminder: {
     type: Date,
   },
   completed: {
@@ -30,3 +38,4 @@ const taskSchema = new mongoose.Schema({
 const Task = mongoose.model('Task', taskSchema);
 
 module.exports = Task;
+
