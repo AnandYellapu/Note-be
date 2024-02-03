@@ -134,7 +134,7 @@ const createTask = async (req, res) => {
 // Helper function to schedule daily reminders between two specific times
 const scheduleDailyReminders = async (user, taskTitle, deadline) => {
   const currentDate = new Date();
-  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 12, 40, 0, 0);
+  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 12, 45, 0, 0);
   const reminderTime2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0, 0, 0);
 
   // Calculate time differences for both reminder times
