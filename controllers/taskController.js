@@ -851,7 +851,7 @@ const createTask = async (req, res) => {
       deadline: new Date(deadline), // Convert to Date object
       priority,
       tags,
-      reminder, 
+      reminder: new Date(reminder),
       user: req.user._id,
     });
 console.log(reminder);
