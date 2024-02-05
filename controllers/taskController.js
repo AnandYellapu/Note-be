@@ -1,88 +1,7 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
-
-
-
-// const AWS = require('aws-sdk');
-
-// // Set your AWS credentials and region
-// AWS.config.update({
-//   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-//   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-//   region: process.env.AWS_REGION,
-// });
-
-// const ses = new AWS.SES({ apiVersion: '2010-12-01' });
-
-// const sendReminderEmail = async (userEmail, taskTitle) => {
-//   const params = {
-//     Destination: {
-//       ToAddresses: [userEmail],
-//     },
-//     Message: {
-//       Body: {
-//         Html: {
-//           Charset: 'UTF-8',
-//           Data: `
-//             <div style="font-family: 'Poppins', Arial, sans-serif; background-color: #f9f9f9; color: #333; padding: 30px; border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto;">
-//             <div style="text-align: center; margin-bottom: 20px;">
-//             <img src="cid:notepadLogo" alt="Note Maker Logo" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 20px;" />
-//             <h1 style="font-size: 32px; margin: 0; color: #3498db;">Note Maker</h1>
-//           </div>
-//           <p style="font-size: 18px; line-height: 1.6; margin-bottom: 30px;">
-//             Dear User,
-//             <br /><br />
-//             This is a friendly reminder that the deadline for your task "<strong style={{ color: 'red', fontWeight: 'bold' }}>${taskTitle}</strong>" is approaching.
-//             Please make sure to complete it on time.
-//             <br /><br />
-//             <span style="font-weight: bold; color: #e74c3c;">Note:</span> Ignoring this reminder may result in delays.
-//             <br /><br />
-//             Best regards,
-//             <br />
-//             The Note Maker Team
-//           </p>
-//           <div style="text-align: center;">
-//             <a href="https://notes-maker12.netlify.app/" target="_blank" style="text-decoration: none; color: #fff; font-weight: bold; font-size: 18px; display: inline-block; padding: 15px 30px; background-color: #3498db; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); transition: background-color 0.3s;">
-//               Visit Note Maker
-//             </a>
-//           </div>
-//             </div>
-//           `,
-//         },
-//       },
-//       Subject: {
-//         Charset: 'UTF-8',
-//         Data: 'Reminder: Task Deadline',
-//       },
-//     },
-//     Source: userEmail,
-//     ReplyToAddresses: [userEmail],
-//   };
-
-//   try {
-//     await ses.sendEmail(params).promise();
-//     console.log('Reminder email sent successfully');
-//   } catch (error) {
-//     console.error('Error sending reminder email:', error.message);
-//   }
-// };
-
-
-
-
 const nodemailer = require('nodemailer');
 
-
-
-// const transporter = nodemailer.createTransport({
-  // host: process.env.SMTP_HOST,
-  // port: process.env.SMTP_PORT,
-  // secure: true,
-  // auth: {
-    // user: process.env.SMTP_USERNAME,
-    // pass: process.env.SMTP_PASSWORD,
-  // },
-// });
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -167,7 +86,6 @@ const getTasks = async (req, res) => {
 };
 
 
-
 const createTask = async (req, res) => {
   const { title, description, deadline, priority, tags, reminder } = req.body;
 
@@ -196,11 +114,18 @@ const createTask = async (req, res) => {
         const initialTimeDifference = selectedReminderTime - currentDateTime;
 
         // Schedule the initial reminder to be sent after the initial time difference
-        setTimeout(async () => {
+        if (initialTimeDifference > 0) {
+          setTimeout(async () => {
+            await sendReminderEmail(user.email, title);
+            // Now, schedule daily reminders until the deadline
+            scheduleDailyReminders(user, title, deadline);
+          }, initialTimeDifference);
+        } else {
+          // The initial reminder time is in the past, send the reminder immediately
           await sendReminderEmail(user.email, title);
-          // Now, schedule daily reminders at 11:50 AM and 4:00 PM until the deadline
+          // Now, schedule daily reminders until the deadline
           scheduleDailyReminders(user, title, deadline);
-        }, initialTimeDifference);
+        }
       }
     }
 
@@ -214,14 +139,14 @@ const createTask = async (req, res) => {
 // Helper function to schedule daily reminders between two specific times
 const scheduleDailyReminders = async (user, taskTitle, deadline) => {
   const currentDate = new Date();
-  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 12, 45, 0, 0);
+  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0, 0, 0);
   const reminderTime2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0, 0, 0);
 
   // Calculate time differences for both reminder times
   const timeDifference1 = reminderTime1.getTime() - currentDate.getTime();
   const timeDifference2 = reminderTime2.getTime() - currentDate.getTime();
 
-  // Schedule daily reminders at 9:00 AM and 4:00 PM until the deadline
+  // Schedule daily reminders until the deadline
   if (timeDifference1 > 0) {
     setTimeout(async () => {
       await sendReminderEmail(user.email, taskTitle);
@@ -236,7 +161,6 @@ const scheduleDailyReminders = async (user, taskTitle, deadline) => {
     }, timeDifference2);
   }
 };
-
 
 
 
