@@ -347,7 +347,7 @@ const getTasks = async (req, res) => {
 
 
 const createTask = async (req, res) => {
-  const { title, description, deadline, priority, tags, reminder } = req.body;
+  const { title, description, deadline, priority, tags, reminder } = await req.body;
 
   try {
     const newTask = new Task({
@@ -356,11 +356,11 @@ const createTask = async (req, res) => {
       deadline: new Date(deadline), // Convert to Date object
       priority,
       tags,
-      reminder: reminder ? new Date(reminder) : null, // Convert to Date object or null
+      reminder, 
       user: req.user._id,
     });
-
-    console.log('Current Time:', new Date());
+console.log(reminder);
+    // console.log('Current Time:', new Date());
     console.log('Reminder Time:', newTask.reminder);
 
     const savedTask = await newTask.save();
@@ -370,8 +370,11 @@ const createTask = async (req, res) => {
 
       if (user) {
         const selectedReminderTime = newTask.reminder.getTime();
-        const currentDateTime = new Date().getTime();
+        const currentDateTime = new Date.now().getTime();
         const initialTimeDifference = selectedReminderTime - currentDateTime;
+        console.log('CurrentDateTime',currentDateTime);
+        console.log('InitialDateTime',initialTimeDifference);
+        console.log('SelectedDateTime',selectedReminderTime);
 
         if (initialTimeDifference > 0) {
           setTimeout(async () => {
