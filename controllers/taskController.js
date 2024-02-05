@@ -85,6 +85,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendReminderEmail = async (userEmail, taskTitle) => {
+  console.log(process.env.SMTP_USERNAME, userEmail);
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
     to: userEmail,
