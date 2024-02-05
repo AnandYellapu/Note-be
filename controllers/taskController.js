@@ -360,6 +360,9 @@ const createTask = async (req, res) => {
       user: req.user._id,
     });
 
+    console.log('Current Time:', new Date());
+    console.log('Reminder Time:', newTask.reminder);
+
     const savedTask = await newTask.save();
 
     if (reminder) {
@@ -428,6 +431,9 @@ const updateTask = async (req, res) => {
 
     const currentReminderTime = task.reminder ? task.reminder.getTime() : null;
     const updatedReminderTime = updatedTaskData.reminder ? new Date(updatedTaskData.reminder).getTime() : null;
+
+    console.log('Current Time:', new Date());
+    console.log('Updated Reminder Time:', updatedReminderTime);
 
     task.title = updatedTaskData.title || task.title;
     task.description = updatedTaskData.description || task.description;
