@@ -74,10 +74,18 @@ const nodemailer = require('nodemailer');
 
 
 
+// const transporter = nodemailer.createTransport({
+  // host: process.env.SMTP_HOST,
+  // port: process.env.SMTP_PORT,
+  // secure: true,
+  // auth: {
+    // user: process.env.SMTP_USERNAME,
+    // pass: process.env.SMTP_PASSWORD,
+  // },
+// });
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: process.env.SMTP_PORT,
-  secure: true, // true for 465, false for other ports
+  service: 'gmail',
   auth: {
     user: process.env.SMTP_USERNAME,
     pass: process.env.SMTP_PASSWORD,
@@ -85,6 +93,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendReminderEmail = async (userEmail, taskTitle) => {
+  console.log(process.env.SMTP_USERNAME, userEmail);
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
     to: userEmail,
