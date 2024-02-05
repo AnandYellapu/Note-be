@@ -865,7 +865,7 @@ console.log(reminder);
 
       if (user) {
         const selectedReminderTime = newTask.reminder.getTime();
-        const currentDateTime = Date.now() + 19080000;
+        const currentDateTime = Date.now() + 20520000;
         const initialTimeDifference = selectedReminderTime - currentDateTime;
         console.log('CurrentDateTime',currentDateTime);
         console.log('InitialDateTime',initialTimeDifference);
