@@ -756,7 +756,8 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
-const moment = require('moment');
+const moment = require('moment-timezone');
+
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -952,6 +953,61 @@ const getTasks = async (req, res) => {
 
 
 
+// Neededddddddddddddddddddddddddddddddddddddddddddddddd
+// const createTask = async (req, res) => {
+//   try {
+//     const { title, description, deadline, priority, tags, reminder } = req.body;
+//     const userId = req.user._id; // Assuming user information is stored in req.user
+
+//     // Basic server-side validation
+//     if (!title || !description || !deadline) {
+//       return res.status(400).json({ message: 'Please provide all required fields' });
+//     }
+
+//     // Create a new task with the user information
+//     const newTask = new Task({
+//       title,
+//       description,
+//       deadline,
+//       priority,
+//       tags,
+//       reminder,
+//       user: userId, // Add the user information to the task
+//     });
+
+//     // Save the task to the database
+//     const savedTask = await newTask.save();
+
+//     // Check if a reminder is set
+//     if (reminder) {
+//       // Format the reminder date and time using moment
+//       const reminderDateTime = moment(reminder).format('YYYY-MM-DD HH:mm:ss');
+
+//       // Schedule a job or use a background task runner (like cron) to send the reminder email
+//       // Here, we're using a simple setTimeout to simulate a background job
+//       const reminderJob = setTimeout(async () => {
+//         try {
+//           // Get the user's email from the database using userId
+//           const user = await User.findById(userId);
+//           const userEmail = user.email;
+
+//           // Send the reminder email
+//           await sendReminderEmail(userEmail, title);
+//         } catch (error) {
+//           console.error('Error sending reminder email:', error.message);
+//         }
+//       }, moment(reminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
+
+//       console.log('Reminder scheduled:', reminderJob);
+//     }
+
+//     res.status(201).json({ message: 'Task created successfully', task: savedTask });
+//   } catch (error) {
+//     console.error('Error creating task:', error);
+//     res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// };
+
 
 const createTask = async (req, res) => {
   try {
@@ -963,52 +1019,24 @@ const createTask = async (req, res) => {
       return res.status(400).json({ message: 'Please provide all required fields' });
     }
 
-    // Create a new task with the user information
+    // Convert deadline and reminder to UTC before saving to the database
     const newTask = new Task({
       title,
       description,
-      deadline,
+      deadline: moment(deadline).tz('UTC').format('YYYY-MM-DD HH:mm:ss'),
       priority,
       tags,
-      reminder,
-      user: userId, // Add the user information to the task
+      reminder: reminder ? moment(reminder).tz('UTC').format('YYYY-MM-DD HH:mm:ss') : '',
+      user: userId,
     });
 
-    // Save the task to the database
     const savedTask = await newTask.save();
-
-    // Check if a reminder is set
-    if (reminder) {
-      // Format the reminder date and time using moment
-      const reminderDateTime = moment(reminder).format('YYYY-MM-DD HH:mm:ss');
-
-      // Schedule a job or use a background task runner (like cron) to send the reminder email
-      // Here, we're using a simple setTimeout to simulate a background job
-      const reminderJob = setTimeout(async () => {
-        try {
-          // Get the user's email from the database using userId
-          const user = await User.findById(userId);
-          const userEmail = user.email;
-
-          // Send the reminder email
-          await sendReminderEmail(userEmail, title);
-        } catch (error) {
-          console.error('Error sending reminder email:', error.message);
-        }
-      }, moment(reminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
-
-      console.log('Reminder scheduled:', reminderJob);
-    }
-
     res.status(201).json({ message: 'Task created successfully', task: savedTask });
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
-
-
-
 
 
 
