@@ -756,6 +756,7 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
+const moment = require('moment');
 
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -766,7 +767,6 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendReminderEmail = async (userEmail, taskTitle) => {
-  console.log(process.env.SMTP_USERNAME, userEmail);
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
     to: userEmail,
@@ -841,121 +841,281 @@ const getTasks = async (req, res) => {
 
 
 
-const createTask = async (req, res) => {
-  const { title, description, deadline, priority, tags, reminder } = await req.body;
+// const createTask = async (req, res) => {
+//   const { title, description, deadline, priority, tags, reminder } = await req.body;
 
+//   try {
+//     const newTask = new Task({
+//       title,
+//       description,
+//       deadline: new Date(deadline), // Convert to Date object
+//       priority,
+//       tags,
+//       reminder: new Date(reminder),
+//       user: req.user._id,
+//     });
+// console.log(reminder);
+//     // console.log('Current Time:', new Date());
+//     console.log('Reminder Time:', newTask.reminder);
+
+//     const savedTask = await newTask.save();
+
+//     if (reminder) {
+//       const user = await User.findById(req.user._id);
+
+//       if (user) {
+//         const selectedReminderTime = newTask.reminder.getTime();
+//         const currentDateTime = Date.now() + 20520000;
+//         const initialTimeDifference = selectedReminderTime - currentDateTime;
+//         console.log('CurrentDateTime',currentDateTime);
+//         console.log('InitialDateTime',initialTimeDifference);
+//         console.log('SelectedDateTime',selectedReminderTime);
+
+//         if (initialTimeDifference > 0) {
+//           setTimeout(async () => {
+//             await sendReminderEmail(user.email, title);
+//             scheduleDailyReminders(user, title, newTask.deadline);
+//           }, initialTimeDifference);
+//         } else {
+//           await sendReminderEmail(user.email, title);
+//           scheduleDailyReminders(user, title, newTask.deadline);
+//         }
+//       }
+//     }
+
+//     res.json(savedTask);
+//   } catch (error) {
+//     console.error('Error creating task:', error);
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// // Helper function to schedule daily reminders between two specific times
+// const scheduleDailyReminders = async (user, taskTitle, deadline) => {
+//   const currentDate = new Date();
+//   const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0, 0, 0);
+//   const reminderTime2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0, 0, 0);
+
+//   // Calculate time differences for both reminder times
+//   const timeDifference1 = reminderTime1.getTime() - currentDate.getTime();
+//   const timeDifference2 = reminderTime2.getTime() - currentDate.getTime();
+
+//   // Schedule daily reminders until the deadline
+//   if (timeDifference1 > 0) {
+//     setTimeout(async () => {
+//       await sendReminderEmail(user.email, taskTitle);
+//       scheduleDailyReminders(user, taskTitle, deadline);
+//     }, timeDifference1);
+//   }
+
+//   if (timeDifference2 > 0) {
+//     setTimeout(async () => {
+//       await sendReminderEmail(user.email, taskTitle);
+//       scheduleDailyReminders(user, taskTitle, deadline);
+//     }, timeDifference2);
+//   }
+// };
+
+
+
+
+// const createTask = async (req, res) => {
+//   try {
+//     const { title, description, deadline, priority, tags, reminder } = req.body;
+//     const userId = req.user._id; // Assuming user information is stored in req.user
+
+//     // Basic server-side validation
+//     if (!title || !description || !deadline) {
+//       return res.status(400).json({ message: 'Please provide all required fields' });
+//     }
+
+//     // Create a new task with the user information
+//     const newTask = new Task({
+//       title,
+//       description,
+//       deadline,
+//       priority,
+//       tags,
+//       reminder,
+//       user: userId, // Add the user information to the task
+//     });
+
+//     // Save the task to the database
+//     const savedTask = await newTask.save();
+
+//     res.status(201).json({ message: 'Task created successfully', task: savedTask });
+//   } catch (error) {
+//     console.error('Error creating task:', error);
+//     res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// };
+
+
+
+
+const createTask = async (req, res) => {
   try {
+    const { title, description, deadline, priority, tags, reminder } = req.body;
+    const userId = req.user._id; // Assuming user information is stored in req.user
+
+    // Basic server-side validation
+    if (!title || !description || !deadline) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    // Create a new task with the user information
     const newTask = new Task({
       title,
       description,
-      deadline: new Date(deadline), // Convert to Date object
+      deadline,
       priority,
       tags,
-      reminder: new Date(reminder),
-      user: req.user._id,
+      reminder,
+      user: userId, // Add the user information to the task
     });
-console.log(reminder);
-    // console.log('Current Time:', new Date());
-    console.log('Reminder Time:', newTask.reminder);
 
+    // Save the task to the database
     const savedTask = await newTask.save();
 
+    // Check if a reminder is set
     if (reminder) {
-      const user = await User.findById(req.user._id);
+      // Format the reminder date and time using moment
+      const reminderDateTime = moment(reminder).format('YYYY-MM-DD HH:mm:ss');
 
-      if (user) {
-        const selectedReminderTime = newTask.reminder.getTime();
-        const currentDateTime = Date.now() + 20520000;
-        const initialTimeDifference = selectedReminderTime - currentDateTime;
-        console.log('CurrentDateTime',currentDateTime);
-        console.log('InitialDateTime',initialTimeDifference);
-        console.log('SelectedDateTime',selectedReminderTime);
+      // Schedule a job or use a background task runner (like cron) to send the reminder email
+      // Here, we're using a simple setTimeout to simulate a background job
+      const reminderJob = setTimeout(async () => {
+        try {
+          // Get the user's email from the database using userId
+          const user = await User.findById(userId);
+          const userEmail = user.email;
 
-        if (initialTimeDifference > 0) {
-          setTimeout(async () => {
-            await sendReminderEmail(user.email, title);
-            scheduleDailyReminders(user, title, newTask.deadline);
-          }, initialTimeDifference);
-        } else {
-          await sendReminderEmail(user.email, title);
-          scheduleDailyReminders(user, title, newTask.deadline);
+          // Send the reminder email
+          await sendReminderEmail(userEmail, title);
+        } catch (error) {
+          console.error('Error sending reminder email:', error.message);
         }
-      }
+      }, moment(reminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
+
+      console.log('Reminder scheduled:', reminderJob);
     }
 
-    res.json(savedTask);
+    res.status(201).json({ message: 'Task created successfully', task: savedTask });
   } catch (error) {
     console.error('Error creating task:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
-// Helper function to schedule daily reminders between two specific times
-const scheduleDailyReminders = async (user, taskTitle, deadline) => {
-  const currentDate = new Date();
-  const reminderTime1 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 9, 0, 0, 0);
-  const reminderTime2 = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 16, 0, 0, 0);
 
-  // Calculate time differences for both reminder times
-  const timeDifference1 = reminderTime1.getTime() - currentDate.getTime();
-  const timeDifference2 = reminderTime2.getTime() - currentDate.getTime();
 
-  // Schedule daily reminders until the deadline
-  if (timeDifference1 > 0) {
-    setTimeout(async () => {
-      await sendReminderEmail(user.email, taskTitle);
-      scheduleDailyReminders(user, taskTitle, deadline);
-    }, timeDifference1);
-  }
 
-  if (timeDifference2 > 0) {
-    setTimeout(async () => {
-      await sendReminderEmail(user.email, taskTitle);
-      scheduleDailyReminders(user, taskTitle, deadline);
-    }, timeDifference2);
-  }
-};
+
+
+// const updateTask = async (req, res) => {
+//   const taskId = req.params.id;
+//   const updatedTaskData = req.body;
+
+//   try {
+//     const task = await Task.findById(taskId);
+
+//     if (!task) {
+//       return res.status(404).json({ message: 'Task not found' });
+//     }
+
+//     const currentReminderTime = task.reminder ? task.reminder.getTime() : null;
+//     const updatedReminderTime = updatedTaskData.reminder ? new Date(updatedTaskData.reminder).getTime() : null;
+
+//     console.log('Current Time:', new Date());
+//     console.log('Updated Reminder Time:', updatedReminderTime);
+
+//     task.title = updatedTaskData.title || task.title;
+//     task.description = updatedTaskData.description || task.description;
+//     task.deadline = updatedTaskData.deadline ? new Date(updatedTaskData.deadline) : task.deadline;
+//     task.priority = updatedTaskData.priority || task.priority;
+//     task.tags = updatedTaskData.tags || task.tags;
+//     task.reminder = updatedTaskData.reminder ? new Date(updatedTaskData.reminder) : null;
+
+//     await task.save();
+
+//     if (updatedReminderTime && currentReminderTime !== updatedReminderTime) {
+//       const user = await User.findById(req.user._id);
+
+//       if (user) {
+//         const timeDifference = updatedReminderTime - new Date().getTime();
+
+//         setTimeout(async () => {
+//           await sendReminderEmail(user.email, task.title);
+//           scheduleDailyReminders(user, task.title, task.deadline);
+//         }, timeDifference);
+//       }
+//     }
+
+//     res.status(200).json({ message: 'Task updated successfully', task });
+//   } catch (error) {
+//     console.error('Error updating task:', error);
+//     res.status(500).json({ message: 'Internal Server Error' });
+//   }
+// };
+
+
 
 const updateTask = async (req, res) => {
   const taskId = req.params.id;
   const updatedTaskData = req.body;
 
   try {
+    // Fetch the existing task from the database
     const task = await Task.findById(taskId);
+
+    // Log for debugging
+    console.log('TaskId:', taskId);
+    console.log('Existing Task:', task);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    const currentReminderTime = task.reminder ? task.reminder.getTime() : null;
-    const updatedReminderTime = updatedTaskData.reminder ? new Date(updatedTaskData.reminder).getTime() : null;
+    // Update task properties
+    task.title = updatedTaskData.title;
+    task.description = updatedTaskData.description;
+    task.deadline = updatedTaskData.deadline;
+    task.priority = updatedTaskData.priority;
+    task.tags = updatedTaskData.tags;
+    task.reminder = updatedTaskData.reminder;
 
-    console.log('Current Time:', new Date());
-    console.log('Updated Reminder Time:', updatedReminderTime);
+    // Save the updated task
+    const updatedTask = await task.save();
 
-    task.title = updatedTaskData.title || task.title;
-    task.description = updatedTaskData.description || task.description;
-    task.deadline = updatedTaskData.deadline ? new Date(updatedTaskData.deadline) : task.deadline;
-    task.priority = updatedTaskData.priority || task.priority;
-    task.tags = updatedTaskData.tags || task.tags;
-    task.reminder = updatedTaskData.reminder ? new Date(updatedTaskData.reminder) : null;
+    // Check if a reminder is set in the updated task
+    if (updatedTask.reminder) {
+      // Format the updated reminder date and time using moment
+      const updatedReminderDateTime = moment(updatedTask.reminder).format('YYYY-MM-DD HH:mm:ss');
 
-    await task.save();
+      // Cancel any existing reminder job (if any)
+      clearTimeout(task.reminderJob);
 
-    if (updatedReminderTime && currentReminderTime !== updatedReminderTime) {
-      const user = await User.findById(req.user._id);
+      // Schedule a new reminder job
+      const reminderJob = setTimeout(async () => {
+        try {
+          // Get the user's email from the database using userId
+          const user = await User.findById(updatedTask.user);
+          const userEmail = user.email;
 
-      if (user) {
-        const timeDifference = updatedReminderTime - new Date().getTime();
+          // Send the reminder email
+          await sendReminderEmail(userEmail, updatedTask.title);
+        } catch (error) {
+          console.error('Error sending reminder email:', error.message);
+        }
+      }, moment(updatedReminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
 
-        setTimeout(async () => {
-          await sendReminderEmail(user.email, task.title);
-          scheduleDailyReminders(user, task.title, task.deadline);
-        }, timeDifference);
-      }
+      // Update the task's reminder job reference
+      task.reminderJob = reminderJob;
+
+      console.log('Reminder rescheduled:', reminderJob);
     }
 
-    res.status(200).json({ message: 'Task updated successfully', task });
+    res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ message: 'Internal Server Error' });
