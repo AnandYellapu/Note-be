@@ -57,6 +57,12 @@ const taskSchema = new mongoose.Schema({
   },
   deadline: {
     type: Date,
+    set: function (deadline) {
+      if (deadline) {
+        return moment(deadline).tz('Asia/Kolkata').toDate(); // Convert to IST
+      }
+      return deadline;
+    }
   },
   priority: {
     type: String, // Change the type according to your priority values (e.g., 'high', 'medium', 'low')
@@ -66,6 +72,12 @@ const taskSchema = new mongoose.Schema({
   },
   reminder: {
     type: Date,
+    set: function (reminder) {
+      if (reminder) {
+        return moment(reminder).tz('Asia/Kolkata').toDate(); // Convert to IST
+      }
+      return reminder;
+    }
   },
   completed: {
     type: Boolean,
@@ -73,6 +85,12 @@ const taskSchema = new mongoose.Schema({
   },
   completedDate: {
     type: Date,
+    set: function (completedDate) {
+      if (completedDate) {
+        return moment(completedDate).tz('Asia/Kolkata').toDate(); // Convert to IST
+      }
+      return completedDate;
+    }
   },
   // Add a reference to the user who owns this task
   user: {
@@ -81,22 +99,6 @@ const taskSchema = new mongoose.Schema({
     required: true,
   },
 }, { timestamps: true });
-
-// Middleware to convert dates to IST before saving
-taskSchema.pre('save', function (next) {
-  // Convert deadline, reminder, and completedDate to IST
-  if (this.deadline) {
-    this.deadline = moment(this.deadline).tz('Asia/Kolkata').toDate();
-  }
-  if (this.reminder) {
-    this.reminder = moment(this.reminder).tz('Asia/Kolkata').toDate();
-  }
-  if (this.completedDate) {
-    this.completedDate = moment(this.completedDate).tz('Asia/Kolkata').toDate();
-  }
-
-  next();
-});
 
 const Task = mongoose.model('Task', taskSchema);
 

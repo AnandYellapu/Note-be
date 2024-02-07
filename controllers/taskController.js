@@ -1,7 +1,8 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
 const nodemailer = require('nodemailer');
-const moment = require('moment-timezone');
+
+
 
 
 const transporter = nodemailer.createTransport({
@@ -13,6 +14,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendReminderEmail = async (userEmail, taskTitle) => {
+  console.log('Recipient email:', userEmail); 
   const mailOptions = {
     from: process.env.SMTP_USERNAME,
     to: userEmail,
@@ -64,26 +66,11 @@ const sendReminderEmail = async (userEmail, taskTitle) => {
 
 
 
-// const getTasks = async (req, res) => {
-//   try {
-//     // Ensure the user is authenticated before fetching tasks
-//     if (!req.user) {
-//       return res.status(401).json({ error: 'Unauthorized. User not authenticated.' });
-//     }
 
-//     // Fetch tasks for the authenticated user
-//     const tasks = await Task.find({ user: req.user._id });
 
-//     // Respond with the retrieved tasks
-//     res.json(tasks);
-//   } catch (error) {
-//     // Handle any errors that occur during the fetch
-//     console.error('Error fetching tasks:', error);
 
-//     // Respond with an internal server error status and the error message
-//     res.status(500).json({ error: 'Internal Server Error. Could not fetch tasks.' });
-//   }
-// };
+
+
 
 
 
@@ -97,16 +84,8 @@ const getTasks = async (req, res) => {
     // Fetch tasks for the authenticated user
     const tasks = await Task.find({ user: req.user._id });
 
-    // Convert date and time to IST before sending the response
-    const tasksInIST = tasks.map(task => ({
-      ...task._doc,
-      deadline: task.deadline ? moment(task.deadline).tz('Asia/Kolkata').format() : null,
-      reminder: task.reminder ? moment(task.reminder).tz('Asia/Kolkata').format() : null,
-      completedDate: task.completedDate ? moment(task.completedDate).tz('Asia/Kolkata').format() : null,
-    }));
-
-    // Respond with the retrieved tasks in IST
-    res.json(tasksInIST);
+    // Respond with the retrieved tasks
+    res.json(tasks);
   } catch (error) {
     // Handle any errors that occur during the fetch
     console.error('Error fetching tasks:', error);
@@ -118,18 +97,50 @@ const getTasks = async (req, res) => {
 
 
 
+// const createTask = async (req, res) => {
+//   try {
+//     // Destructure task details from the request body
+//     const { title, description, deadline, priority, tags, reminder } = req.body;
 
+//     // Ensure that the user ID is retrieved from the authenticated user
+//     const userId = req.user._id;
+
+//     // Create a new task object using the Task model
+//     const newTask = new Task({
+//       title,
+//       description,
+//       deadline,
+//       priority,
+//       tags,
+//       reminder,
+//       user: userId, // Assign the retrieved user ID
+//     });
+
+//     // Save the task to the database
+//     const savedTask = await newTask.save();
+
+//     // Respond with the saved task
+//     res.status(201).json(savedTask);
+//   } catch (error) {
+//     // Handle any errors that occur during task creation
+//     console.error('Error creating task:', error);
+//     res.status(500).json({ error: 'Could not create task. Please try again later.' });
+//   }
+// };
+
+
+
+
+// needed
 const createTask = async (req, res) => {
   try {
+    // Destructure task details from the request body
     const { title, description, deadline, priority, tags, reminder } = req.body;
-    const userId = req.user._id; // Assuming user information is stored in req.user
 
-    // Basic server-side validation
-    if (!title || !description || !deadline) {
-      return res.status(400).json({ message: 'Please provide all required fields' });
-    }
+    // Ensure that the user ID is retrieved from the authenticated user
+    const userId = req.user._id;
 
-    // Create a new task with the user information
+    // Create a new task object using the Task model
     const newTask = new Task({
       title,
       description,
@@ -137,41 +148,48 @@ const createTask = async (req, res) => {
       priority,
       tags,
       reminder,
-      user: userId, // Add the user information to the task
+      user: userId, // Assign the retrieved user ID
     });
 
     // Save the task to the database
     const savedTask = await newTask.save();
 
-    // Check if a reminder is set
+    // If reminder is set, schedule the reminder email
     if (reminder) {
-      // Format the reminder date and time using moment
-      const reminderDateTime = moment(reminder).format('YYYY-MM-DD HH:mm:ss');
+      const user = await User.findById(userId);
+      const reminderDate = new Date(reminder); // Convert reminder string to Date object
+      const currentTime = new Date();
 
-      // Schedule a job or use a background task runner (like cron) to send the reminder email
-      // Here, we're using a simple setTimeout to simulate a background job
-      const reminderJob = setTimeout(async () => {
-        try {
-          // Get the user's email from the database using userId
-          const user = await User.findById(userId);
-          const userEmail = user.email;
+      // Calculate the delay until the reminder date
+      const delay = reminderDate - currentTime;
 
-          // Send the reminder email
-          await sendReminderEmail(userEmail, title);
-        } catch (error) {
-          console.error('Error sending reminder email:', error.message);
-        }
-      }, moment(reminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
-
-      console.log('Reminder scheduled:', reminderJob);
+      // Ensure that the reminder date is in the future
+      if (delay > 0) {
+        setTimeout(async () => {
+          try {
+            // Send reminder email
+            await sendReminderEmail(user.email, title);
+          } catch (error) {
+            console.error('Error sending reminder email:', error.message);
+          }
+        }, delay);
+      } else {
+        console.warn('Reminder date is in the past. Reminder email not scheduled.');
+      }
     }
 
-    res.status(201).json({ message: 'Task created successfully', task: savedTask });
+    // Respond with the saved task
+    res.status(201).json(savedTask);
   } catch (error) {
+    // Handle any errors that occur during task creation
     console.error('Error creating task:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    res.status(500).json({ error: 'Could not create task. Please try again later.' });
   }
 };
+
+
+
+
 
 
 
@@ -182,40 +200,40 @@ const createTask = async (req, res) => {
 //   const taskId = req.params.id;
 //   const updatedTaskData = req.body;
 
+//   console.log('Received request to update task with ID:', taskId);
+//   console.log('Request body:', updatedTaskData);
+
 //   try {
+//     // Find the task by ID
 //     const task = await Task.findById(taskId);
 
 //     if (!task) {
 //       return res.status(404).json({ message: 'Task not found' });
 //     }
 
-//     const currentReminderTime = task.reminder ? task.reminder.getTime() : null;
-//     const updatedReminderTime = updatedTaskData.reminder ? new Date(updatedTaskData.reminder).getTime() : null;
-
-//     console.log('Current Time:', new Date());
-//     console.log('Updated Reminder Time:', updatedReminderTime);
-
-//     task.title = updatedTaskData.title || task.title;
-//     task.description = updatedTaskData.description || task.description;
-//     task.deadline = updatedTaskData.deadline ? new Date(updatedTaskData.deadline) : task.deadline;
-//     task.priority = updatedTaskData.priority || task.priority;
-//     task.tags = updatedTaskData.tags || task.tags;
-//     task.reminder = updatedTaskData.reminder ? new Date(updatedTaskData.reminder) : null;
-
-//     await task.save();
-
-//     if (updatedReminderTime && currentReminderTime !== updatedReminderTime) {
-//       const user = await User.findById(req.user._id);
-
-//       if (user) {
-//         const timeDifference = updatedReminderTime - new Date().getTime();
-
-//         setTimeout(async () => {
-//           await sendReminderEmail(user.email, task.title);
-//           scheduleDailyReminders(user, task.title, task.deadline);
-//         }, timeDifference);
+//     // Check if task completion status is being updated
+//     if (updatedTaskData.completed !== undefined) {
+//       // If the task was marked as completed and is now being edited to false, reset completion status
+//       if (task.completed && !updatedTaskData.completed) {
+//         task.completed = false;
+//         task.completedDate = null;
+//       } else if (!task.completed && updatedTaskData.completed) {
+//         // If the task was not completed and is now marked as completed, update completion date
+//         task.completed = true;
+//         task.completedDate = new Date().toISOString();
 //       }
 //     }
+
+//     // Update task data
+//     task.title = updatedTaskData.title || task.title;
+//     task.description = updatedTaskData.description || task.description;
+//     task.deadline = updatedTaskData.deadline || task.deadline;
+//     task.priority = updatedTaskData.priority || task.priority;
+//     task.tags = updatedTaskData.tags || task.tags;
+//     task.reminder = updatedTaskData.reminder || task.reminder;
+
+//     // Save the updated task
+//     await task.save();
 
 //     res.status(200).json({ message: 'Task updated successfully', task });
 //   } catch (error) {
@@ -226,62 +244,71 @@ const createTask = async (req, res) => {
 
 
 
+// needed
 const updateTask = async (req, res) => {
   const taskId = req.params.id;
   const updatedTaskData = req.body;
 
-  try {
-    // Fetch the existing task from the database
-    const task = await Task.findById(taskId);
+  console.log('Received request to update task with ID:', taskId);
+  console.log('Request body:', updatedTaskData);
 
-    // Log for debugging
-    console.log('TaskId:', taskId);
-    console.log('Existing Task:', task);
+  try {
+    // Find the task by ID
+    const task = await Task.findById(taskId);
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Update task properties
-    task.title = updatedTaskData.title || task.title;
-    task.description = updatedTaskData.description;
-    task.deadline = updatedTaskData.deadline;
-    task.priority = updatedTaskData.priority;
-    task.tags = updatedTaskData.tags;
-    task.reminder = updatedTaskData.reminder;
-
-    // Save the updated task
-    const updatedTask = await task.save();
-
-    // Check if a reminder is set in the updated task
-    if (updatedTask.reminder) {
-      // Format the updated reminder date and time using moment
-      const updatedReminderDateTime = moment(updatedTask.reminder).format('YYYY-MM-DD HH:mm:ss');
-
-      // Cancel any existing reminder job (if any)
-      clearTimeout(task.reminderJob);
-
-      // Schedule a new reminder job
-      const reminderJob = setTimeout(async () => {
-        try {
-          // Get the user's email from the database using userId
-          const user = await User.findById(updatedTask.user);
-          const userEmail = user.email;
-
-          // Send the reminder email
-          await sendReminderEmail(userEmail, updatedTask.title);
-        } catch (error) {
-          console.error('Error sending reminder email:', error.message);
-        }
-      }, moment(updatedReminderDateTime).diff(moment())); // Calculate the time difference for setTimeout
-
-      // Update the task's reminder job reference
-      task.reminderJob = reminderJob;
-
-      console.log('Reminder rescheduled:', reminderJob);
+    // Check if task completion status is being updated
+    if (updatedTaskData.completed !== undefined) {
+      // If the task was marked as completed and is now being edited to false, reset completion status
+      if (task.completed && !updatedTaskData.completed) {
+        task.completed = false;
+        task.completedDate = null;
+      } else if (!task.completed && updatedTaskData.completed) {
+        // If the task was not completed and is now marked as completed, update completion date
+        task.completed = true;
+        task.completedDate = new Date().toISOString();
+      }
     }
 
-    res.status(200).json({ message: 'Task updated successfully', task: updatedTask });
+    // Update task data
+    task.title = updatedTaskData.title || task.title;
+    task.description = updatedTaskData.description || task.description;
+    task.deadline = updatedTaskData.deadline || task.deadline;
+    task.priority = updatedTaskData.priority || task.priority;
+    task.tags = updatedTaskData.tags || task.tags;
+    task.reminder = updatedTaskData.reminder || task.reminder;
+
+    // Save the updated task
+    await task.save();
+
+    // If reminder is updated, reschedule the reminder email
+    if (updatedTaskData.reminder) {
+      const user = await User.findById(req.user._id);
+      const reminderDate = new Date(updatedTaskData.reminder); // Convert reminder string to Date object
+      const currentTime = new Date();
+
+      // Calculate the delay until the reminder date
+      const delay = reminderDate - currentTime;
+
+      // Ensure that the reminder date is in the future
+      if (delay > 0) {
+        setTimeout(async () => {
+          try {
+            // Send reminder email
+            await sendReminderEmail(user.email, task.title);
+          } catch (error) {
+            console.error('Error sending reminder email:', error.message);
+          }
+        }, delay);
+      } else {
+        console.warn('Reminder date is in the past. Reminder email not scheduled.');
+      }
+    }
+
+    res.status(200).json({ message: 'Task updated successfully', task });
   } catch (error) {
     console.error('Error updating task:', error);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -290,21 +317,75 @@ const updateTask = async (req, res) => {
 
 
 
+// needed
 const deleteTask = async (req, res) => {
   const { id } = req.params;
-
   try {
-    await Task.findByIdAndDelete(id);
-    res.json({ message: 'Task deleted successfully' });
+    // Find the task to be deleted
+    const deletedTask = await Task.findByIdAndDelete(id);
+
+    // Cancel reminder if the task has a reminder set
+    if (deletedTask.reminder) {
+      // Clear timeout to prevent sending the reminder email
+      clearTimeout(deletedTask.reminderTimeout);
+    }
+
+    res.json({ message: 'Task deleted successfully', deletedTask });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
+
+
+
+
+
+
+
+
+// Undo task deletion
+const undoTaskDeletion = async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Retrieve the deleted task from the database
+    const deletedTask = await DeletedTask.findById(id);
+
+    // If the deleted task exists, restore it to the original collection
+    if (deletedTask) {
+      // Create a new task instance with the properties of the deleted task
+      const restoredTask = new Task(deletedTask.toObject());
+      
+      // Save the restored task to the original collection
+      await restoredTask.save();
+
+      // Delete the task from the temporary storage
+      await DeletedTask.findByIdAndDelete(id);
+
+      // Respond with success message and the restored task
+      res.json({ message: 'Task deletion undone', restoredTask });
+    } else {
+      // If the deleted task doesn't exist, respond with an error message
+      res.status(404).json({ error: 'Deleted task not found' });
+    }
+  } catch (error) {
+    // Handle any errors that occur during the process
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
 
 module.exports = {
   getTasks,
   createTask,
   updateTask,
   deleteTask,
+  undoTaskDeletion,
 };
+
+
+
+
+
 
