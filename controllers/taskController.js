@@ -1,6 +1,8 @@
 const Task = require('../models/Task');
 const User = require('../models/User');
+const DeletedTask = require('../models/DeletedTask');
 const nodemailer = require('nodemailer');
+const moment = require('moment-timezone');
 
 
 
@@ -64,16 +66,6 @@ const sendReminderEmail = async (userEmail, taskTitle) => {
 
 
 
-
-
-
-
-
-
-
-
-
-
 const getTasks = async (req, res) => {
   try {
     // Ensure the user is authenticated before fetching tasks
@@ -96,42 +88,6 @@ const getTasks = async (req, res) => {
 };
 
 
-
-// const createTask = async (req, res) => {
-//   try {
-//     // Destructure task details from the request body
-//     const { title, description, deadline, priority, tags, reminder } = req.body;
-
-//     // Ensure that the user ID is retrieved from the authenticated user
-//     const userId = req.user._id;
-
-//     // Create a new task object using the Task model
-//     const newTask = new Task({
-//       title,
-//       description,
-//       deadline,
-//       priority,
-//       tags,
-//       reminder,
-//       user: userId, // Assign the retrieved user ID
-//     });
-
-//     // Save the task to the database
-//     const savedTask = await newTask.save();
-
-//     // Respond with the saved task
-//     res.status(201).json(savedTask);
-//   } catch (error) {
-//     // Handle any errors that occur during task creation
-//     console.error('Error creating task:', error);
-//     res.status(500).json({ error: 'Could not create task. Please try again later.' });
-//   }
-// };
-
-
-
-
-// needed
 const createTask = async (req, res) => {
   try {
     // Destructure task details from the request body
@@ -157,8 +113,10 @@ const createTask = async (req, res) => {
     // If reminder is set, schedule the reminder email
     if (reminder) {
       const user = await User.findById(userId);
-      const reminderDate = new Date(reminder); // Convert reminder string to Date object
-      const currentTime = new Date();
+      // Convert deadline and reminder to IST
+      const deadlineIST = moment(deadline).tz('Asia/Kolkata');
+      const reminderDate = moment(reminder).tz('Asia/Kolkata');
+      const currentTime = moment().tz('Asia/Kolkata');
 
       // Calculate the delay until the reminder date
       const delay = reminderDate - currentTime;
@@ -186,61 +144,6 @@ const createTask = async (req, res) => {
     res.status(500).json({ error: 'Could not create task. Please try again later.' });
   }
 };
-
-
-
-
-
-
-
-
-
-
-// const updateTask = async (req, res) => {
-//   const taskId = req.params.id;
-//   const updatedTaskData = req.body;
-
-//   console.log('Received request to update task with ID:', taskId);
-//   console.log('Request body:', updatedTaskData);
-
-//   try {
-//     // Find the task by ID
-//     const task = await Task.findById(taskId);
-
-//     if (!task) {
-//       return res.status(404).json({ message: 'Task not found' });
-//     }
-
-//     // Check if task completion status is being updated
-//     if (updatedTaskData.completed !== undefined) {
-//       // If the task was marked as completed and is now being edited to false, reset completion status
-//       if (task.completed && !updatedTaskData.completed) {
-//         task.completed = false;
-//         task.completedDate = null;
-//       } else if (!task.completed && updatedTaskData.completed) {
-//         // If the task was not completed and is now marked as completed, update completion date
-//         task.completed = true;
-//         task.completedDate = new Date().toISOString();
-//       }
-//     }
-
-//     // Update task data
-//     task.title = updatedTaskData.title || task.title;
-//     task.description = updatedTaskData.description || task.description;
-//     task.deadline = updatedTaskData.deadline || task.deadline;
-//     task.priority = updatedTaskData.priority || task.priority;
-//     task.tags = updatedTaskData.tags || task.tags;
-//     task.reminder = updatedTaskData.reminder || task.reminder;
-
-//     // Save the updated task
-//     await task.save();
-
-//     res.status(200).json({ message: 'Task updated successfully', task });
-//   } catch (error) {
-//     console.error('Error updating task:', error);
-//     res.status(500).json({ message: 'Internal Server Error' });
-//   }
-// };
 
 
 
@@ -317,12 +220,32 @@ const updateTask = async (req, res) => {
 
 
 
-// needed
+
+
+
+// const deleteTask = async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     // Find the task to be "deleted" and mark it as deleted
+//     const deletedTask = await Task.findByIdAndUpdate(id, { deleted: true }, { new: true });
+
+//     if (!deletedTask) {
+//       return res.status(404).json({ error: 'Task not found' });
+//     }
+
+//     res.json({ message: 'Task marked as deleted', deletedTask });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+
+
 const deleteTask = async (req, res) => {
   const { id } = req.params;
   try {
     // Find the task to be deleted
-    const deletedTask = await Task.findByIdAndDelete(id);
+    const deletedTask = await Task.findByIdAndDelete(id, { deleted: true }, { new: true });
 
     // Cancel reminder if the task has a reminder set
     if (deletedTask.reminder) {
@@ -338,40 +261,22 @@ const deleteTask = async (req, res) => {
 
 
 
-
-
-
-
-
-// Undo task deletion
 const undoTaskDeletion = async (req, res) => {
   const { id } = req.params;
   try {
-    // Retrieve the deleted task from the database
-    const deletedTask = await DeletedTask.findById(id);
+    // Find the task to be "undone" and mark it as not deleted
+    const restoredTask = await Task.findByIdAndUpdate(id, { deleted: false }, { new: true });
 
-    // If the deleted task exists, restore it to the original collection
-    if (deletedTask) {
-      // Create a new task instance with the properties of the deleted task
-      const restoredTask = new Task(deletedTask.toObject());
-      
-      // Save the restored task to the original collection
-      await restoredTask.save();
-
-      // Delete the task from the temporary storage
-      await DeletedTask.findByIdAndDelete(id);
-
-      // Respond with success message and the restored task
-      res.json({ message: 'Task deletion undone', restoredTask });
-    } else {
-      // If the deleted task doesn't exist, respond with an error message
-      res.status(404).json({ error: 'Deleted task not found' });
+    if (!restoredTask) {
+      return res.status(404).json({ error: 'Deleted task not found' });
     }
+
+    res.json({ message: 'Task deletion undone', restoredTask });
   } catch (error) {
-    // Handle any errors that occur during the process
     res.status(500).json({ error: error.message });
   }
 };
+
 
 
 
@@ -383,9 +288,3 @@ module.exports = {
   deleteTask,
   undoTaskDeletion,
 };
-
-
-
-
-
-
